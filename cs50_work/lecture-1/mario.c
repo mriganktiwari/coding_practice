@@ -1,3 +1,4 @@
+#include <cs50.h>
 #include <stdio.h>
 
 // int main(void)
@@ -29,10 +30,30 @@
 //     }
 // }
 
+// int main(void)
+// {
+//    const int n = 5; // const will fix n as a constant, no line of code in future could change it
+   
+//    for (int i=0; i<n; i++)
+//     {
+//         for (int j=0; j<n; j++)
+//         {
+//             printf("#");
+//         }
+//         printf("\n");
+//     }
+// }
+
 int main(void)
 {
-   const int n = 5; // const will fix n as a constant, no line of code in future could change it
+   int n = get_int("Size: ");
    
+   // conditionals to handle the negative integers entered by user
+   while(n<1)
+   {
+    n = get_int("Size: ");
+   }
+
    for (int i=0; i<n; i++)
     {
         for (int j=0; j<n; j++)
