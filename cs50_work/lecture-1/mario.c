@@ -44,15 +44,36 @@
 //     }
 // }
 
+// int main(void)
+// {
+//    int n = get_int("Size: ");
+
+//    // conditionals to handle the negative integers entered by user
+//    while (n < 1)
+//    {
+//     n = get_int("Size: ");
+//    }
+
+//    for (int i=0; i<n; i++)
+//     {
+//         for (int j=0; j<n; j++)
+//         {
+//             printf("#");
+//         }
+//         printf("\n");
+//     }
+// }
+
+
+// Using the same thing as above, but not repeating a line of code n = get_int("Size: ")
 int main(void)
 {
-   int n = get_int("Size: ");
-   
-   // conditionals to handle the negative integers entered by user
-   while(n<1)
+   int n;
+   do
    {
     n = get_int("Size: ");
    }
+   while (n < 1);
 
    for (int i=0; i<n; i++)
     {
