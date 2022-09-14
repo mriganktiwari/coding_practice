@@ -32,6 +32,7 @@
 int main(void)
 {
    const int n = 5; // const will fix n as a constant, no line of code in future could change it
+   
    for (int i=0; i<n; i++)
     {
         for (int j=0; j<n; j++)
