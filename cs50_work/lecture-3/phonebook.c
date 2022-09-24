@@ -20,3 +20,5 @@ int main(void)
     printf("Not found.");
     return 1;
 }
+
+// Because this is not a good way of storing information, we transition to Data Sctructures
