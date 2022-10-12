@@ -75,6 +75,11 @@ lucianno
 
 Have fun!
 
+# Important notes from videos & links:
+
+    1. Practice **Broadcasting** in pytorch with some good tutorials
+    2. torch.tensor internals - http://blog.ezyang.com/2019/05/pytorch-internals/
+    
 ### License
 
 MIT
