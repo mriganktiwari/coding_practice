@@ -1,6 +1,6 @@
 # Lessons learnt from Karpathy videos:
 
-## Video 1:
+## Video 1
 #### Bi-gram model
 1. **Zip** - to generate bigrams from words / text & iterate through them simultaneously
 2. Adding start and end tokens
@@ -54,6 +54,8 @@
 			- Is equivalent to label smoothing
 				- The more you incentivize that, more **smooth** distribution you'll achieve
 
-7. Few notes: on **Regularization**
+7. Few notes: on **Regularization**(https://youtu.be/PaCmpygFfXo?t=6619)
 	- We can augment the loss function
 		- To have a small component called **regularization loss**
+
+## Video 2
