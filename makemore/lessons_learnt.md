@@ -1,5 +1,4 @@
 # Lessons learnt from Karpathy videos:
----
 
 ## Video 1:
 #### Bi-gram model
