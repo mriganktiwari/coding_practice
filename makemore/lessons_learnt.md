@@ -59,3 +59,5 @@
 		- To have a small component called **regularization loss**
 
 ## Video 2
+1. Constructing a sliding window of characters (should also be similar for tokens)
+2. Indexing pytorch tensor with another 2d tensor
