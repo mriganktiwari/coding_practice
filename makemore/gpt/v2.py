@@ -66,16 +66,16 @@ class Head(nn.Module):
     
     def forward(self, x):
         B,T,C = x.shape
-        k = self.key(x) # (B,T,C)
-        q = self.query(x) # (B,T,C)
+        k = self.key(x) # (B,T,hs)
+        q = self.query(x) # (B,T,hs)
         #compute attention scores
-        wei = q @ k.transpose(-2,-1) * k.shape[-1]**-0.5 # (B,T,C) @ (B,C,T) --> (B,T,T)
+        wei = q @ k.transpose(-2,-1) * k.shape[-1]**-0.5 # (B,T,hs) @ (B,hs,T) --> (B,T,T)
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B,T,T)
         wei = F.softmax(wei, dim=-1) # (B,T,T)
 
         # perform the weighted aggregation of the values
-        v = self.value(x)
-        out = wei @ v
+        v = self.value(x) # (B,T,hs)
+        out = wei @ v     # (B,T,T) @ (B,T,hs) ---> (B,T,hs)
         return out
 
 # super simple bigram model
@@ -86,7 +86,7 @@ class BigramLanguageModel(nn.Module):
         # each token directly reads off thee logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd) #encoding identity of tokens
         self.position_embedding_table = nn.Embedding(block_size, n_embd) #encoding position of tokens
-        self.sa_head = Head(n_embd)
+        self.sa_head = Head(n_embd) # keeping head_size similar to n_embd for time being
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None):
