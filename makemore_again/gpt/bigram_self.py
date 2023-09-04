@@ -9,6 +9,7 @@ max_iters = 10000
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
 eval_interval = 200
+n_embd = 32
 
 # data prep
 text = open("../../makemore/gpt/input.txt", "r").read()
@@ -51,14 +52,17 @@ def estimate_loss():
 
 # simple bigram LM
 class BigramLanguageModel(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self):
         super().__init__()
-        self.token_embedding_table = nn.Embedding(vocab_size, vocab_size) #(vocab_size, vocab_size) <--> (C,C)
+        self.token_embedding_table = nn.Embedding(vocab_size, n_embd) #(vocab_size, n_embd) <--> (C,C)
+        self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None): # passing idx of shape (B,T)
         
         # idx & targets are both (B, T) tensor of integers
-        logits = self.token_embedding_table(idx) # (B,T,C) : C is vocab_size here, but can differ
+        tok_emb = self.token_embedding_table(idx) # (B,T,n_embd)
+        logits = self.lm_head(tok_emb) # (B,T,vocab_size)
+        
         if targets is None:
             loss = None
         else:
@@ -82,7 +86,7 @@ class BigramLanguageModel(nn.Module):
         return idx
 
 # initialize the model
-model = BigramLanguageModel(vocab_size=vocab_size)
+model = BigramLanguageModel()
 model = model.to(device)
 logits, loss = model(xb, yb)
 # print(f'Shape of xb is: {xb.shape} and of yb is: {yb.shape}')
