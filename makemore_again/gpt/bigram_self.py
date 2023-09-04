@@ -55,13 +55,17 @@ class BigramLanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd) #(vocab_size, n_embd) <--> (C,C)
+        self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None): # passing idx of shape (B,T)
         
         # idx & targets are both (B, T) tensor of integers
+        B,T = idx.shape
         tok_emb = self.token_embedding_table(idx) # (B,T,n_embd)
-        logits = self.lm_head(tok_emb) # (B,T,vocab_size)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,n_embd)
+        x = tok_emb + pos_emb
+        logits = self.lm_head(x) # (B,T,vocab_size)
         
         if targets is None:
             loss = None
@@ -77,7 +81,9 @@ class BigramLanguageModel(nn.Module):
         # idx is (B,T) tensor, which is T time dims for each context in a batch
         # And we wish to generate T+1, T+2,  ..so on tokens for each context in a batch
         for _ in range(max_new_tokens):
-            logits, loss = self(idx)
+            # crop the idx for last block_size (T) timesteps
+            idx_cond = idx[ : , -block_size : ]
+            logits, loss = self(idx_cond)
             # focus only on the last timestep: as this is bigram model
             logits = logits[:, -1, :] # (B, C)
             probs = F.softmax(logits, dim=1) # (B, C)
@@ -105,7 +111,6 @@ for iter in range(max_iters):
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
-# print(loss.item())
 
 
 # generate from the model
