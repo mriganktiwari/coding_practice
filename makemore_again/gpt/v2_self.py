@@ -2,17 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-batch_size = 32
-block_size = 8
+batch_size = 64
+block_size = 256 # 8
 torch.manual_seed(1337)
-max_iters = 10000
+max_iters = 5000
 device = 'cuda' if torch.cuda.is_available() else 'cpu' # 'mps' is for using M1 mac gpu
 eval_iters = 200
-eval_interval = 200
-n_embd = 32
+eval_interval = 500
+n_embd = 384
 learning_rate = 3e-4 # 1e-3
-n_layer = 4
-n_head = 8
+n_layer = 6
+n_head = 6
 dropout = 0.2
 
 # data prep
