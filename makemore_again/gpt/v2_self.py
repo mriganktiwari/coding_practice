@@ -6,7 +6,7 @@ batch_size = 32
 block_size = 8
 torch.manual_seed(1337)
 max_iters = 10000
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() else 'cpu' # 'mps' is for using M1 mac gpu
 eval_iters = 200
 eval_interval = 200
 n_embd = 32
@@ -95,14 +95,30 @@ class FeedForward(nn.Module):
         return self.net(x) #(B,T,n_embd)
 
 
+class Block(nn.Module):
+    def __init__(self, n_embd, n_head):
+        super().__init__()
+        head_size = n_embd // n_head
+        self.sa = MultiHeadAttention(num_heads=n_head, head_size=head_size) # 4 communication channels of 8-dim self-attention
+        self.ffwd = FeedForward(n_embd=n_embd)
+    
+    def forward(self, x):
+        x = self.sa(x)
+        x = self.ffwd(x)
+        return x
+
+
 # simple bigram LM
 class BigramLanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd) #(vocab_size, n_embd) <--> (C,C)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.sa_heads = MultiHeadAttention(num_heads=4,head_size=n_embd//4) # 4 communication channels of 8-dim self-attention
-        self.ffwd = FeedForward(n_embd=n_embd)
+        self.blocks = nn.Sequential(
+            Block(n_embd, n_head=4),
+            Block(n_embd, n_head=4),
+            Block(n_embd, n_head=4),
+        )
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None): # passing idx of shape (B,T)
@@ -112,8 +128,7 @@ class BigramLanguageModel(nn.Module):
         tok_emb = self.token_embedding_table(idx) # (B,T,n_embd)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,n_embd)
         x = tok_emb + pos_emb
-        x = self.sa_heads(x) # apply 1 head of self-attention (B,T,head_size)
-        x = self.ffwd(x) # (B,T,n_embd)
+        x = self.blocks(x)
         logits = self.lm_head(x) # (B,T,vocab_size)
         
         if targets is None:
