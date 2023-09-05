@@ -80,7 +80,20 @@ class MultiHeadAttention(nn.Module):
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
     
     def forward(self, x):
-        return torch.cat([h(x) for h in self.heads], dim=-1)
+        return torch.cat([h(x) for h in self.heads], dim=-1) # (B, T, head_size * num_heads)
+
+
+class FeedForward(nn.Module):
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, n_embd),
+            nn.ReLU()
+        )
+    
+    def forward(self, x):
+        return self.net(x) #(B,T,n_embd)
+
 
 # simple bigram LM
 class BigramLanguageModel(nn.Module):
@@ -89,6 +102,7 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd) #(vocab_size, n_embd) <--> (C,C)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.sa_heads = MultiHeadAttention(num_heads=4,head_size=n_embd//4) # 4 communication channels of 8-dim self-attention
+        self.ffwd = FeedForward(n_embd=n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None): # passing idx of shape (B,T)
@@ -99,6 +113,7 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,n_embd)
         x = tok_emb + pos_emb
         x = self.sa_heads(x) # apply 1 head of self-attention (B,T,head_size)
+        x = self.ffwd(x) # (B,T,n_embd)
         logits = self.lm_head(x) # (B,T,vocab_size)
         
         if targets is None:
