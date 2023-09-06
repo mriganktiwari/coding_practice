@@ -73,17 +73,22 @@ class GPTLanguageModel(nn.Module):
             loss = F.cross_entropy(logits, targets)
         return logits, loss
     
-    def generate(self, idx, max_new_tokens=200):
+    def generate(self, idx, max_new_tokens = 100):
+        # idx is (B,T) tensor, which is T time dims for each context in a batch
+        # And we wish to generate T+1, T+2,  ..so on tokens for each context in a batch
         for _ in range(max_new_tokens):
-            idx_cond = idx[:, -block_size:]
+            # crop the idx for last block_size (T) timesteps
+            idx_cond = idx[ : , -block_size : ]
             logits, loss = self(idx_cond)
-            logits = logits[:, -1, :] # focus only on last timestep
-            probs = F.softmax(logits, dim=-1)
+            # focus only on the last timestep: as this is bigram model
+            logits = logits[:, -1, :] # (B, C)
+            probs = F.softmax(logits, dim=1) # (B, C)
             idx_next = torch.multinomial(probs, num_samples=1)
-            idx = torch.cat((idx, idx_next))
+            idx = torch.cat((idx, idx_next), dim=1)
         return idx
 
 model = GPTLanguageModel()
+model = model.to(device)
 print(f"Number of parameters in this model: {sum(p.numel() for p in model.parameters())/1e6}M.")
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
@@ -98,3 +103,8 @@ for iter in range(max_iters):
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
+
+
+# generate from the model
+context = torch.zeros((1,1), dtype=torch.long, device=device)
+print(decode(model.generate(context, max_new_tokens=500)[0].tolist()))
