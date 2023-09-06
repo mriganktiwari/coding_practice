@@ -57,6 +57,19 @@ def estimate_loss():
     return out
 
 
+## self attention
+
+
+## multi head attention
+
+
+## feed forward
+
+
+## block
+
+
+## model class
 class GPTLanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -96,10 +109,14 @@ class GPTLanguageModel(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1)
         return idx
 
+
+## model init
 model = GPTLanguageModel()
 model = model.to(device)
 print(f"Number of parameters in this model: {sum(p.numel() for p in model.parameters())/1e6}M.")
 
+
+## training
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 for iter in range(max_iters):
