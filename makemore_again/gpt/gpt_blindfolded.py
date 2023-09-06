@@ -12,6 +12,7 @@ block_size = 8
 batch_size = 4
 learning_rate = 1e-3
 max_iters = 10000
+n_embd = 32
 
 ## reading data and processing
 text = open('../../makemore/gpt/input.txt', 'r').read()
@@ -54,16 +55,24 @@ def estimate_loss():
         out[split] = losses.mean()
     model.train()
     return out
-            
+
 
 class GPTLanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.token_embedding_table = nn.Embedding(num_embeddings=vocab_size, embedding_dim=vocab_size)
-    
+        self.token_embedding_table = nn.Embedding(num_embeddings=vocab_size, embedding_dim=n_embd)
+        self.position_embedding_table = nn.Embedding(num_embeddings=block_size, embedding_dim=n_embd)
+        self.lm_head = nn.Linear(in_features=n_embd, out_features=vocab_size)
+
     # This would get (B,T) dimensional idx/targets to predict next tokens
     def forward(self, idx, targets=None):
-        logits = self.token_embedding_table(idx) # (B,T,C)
+
+        B,T = idx.shape
+        tok_emb = self.token_embedding_table(idx) # (B,T,n_embd)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,n_embd)
+        x = tok_emb + pos_emb
+        logits = self.lm_head(x)
+        
         if targets == None:
             loss = None
         else:
@@ -72,7 +81,7 @@ class GPTLanguageModel(nn.Module):
             targets = targets.view(B*T) # (B*T)
             loss = F.cross_entropy(logits, targets)
         return logits, loss
-    
+
     def generate(self, idx, max_new_tokens = 100):
         # idx is (B,T) tensor, which is T time dims for each context in a batch
         # And we wish to generate T+1, T+2,  ..so on tokens for each context in a batch
