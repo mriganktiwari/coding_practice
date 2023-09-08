@@ -7,15 +7,15 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 ## hparams
 eval_iters = 200
-eval_interval = 200
-block_size = 8
-batch_size = 4
-learning_rate = 1e-3
-max_iters = 10000
-n_embd = 32
-num_heads = 4
+eval_interval = 500
+block_size = 256
+batch_size = 64
+learning_rate = 3e-4
+max_iters = 5000
+n_embd = 384
+num_heads = 6
 dropout = 0.2
-n_layer = 4
+n_layer = 6
 
 ## reading data and processing
 text = open('../../makemore/gpt/input.txt', 'r').read()
