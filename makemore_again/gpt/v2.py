@@ -158,6 +158,7 @@ class BigramLanguageModel(nn.Module):
         # x = self.sa_heads(x) # apply one head of self-attention. (B, T, n_embd/head_size)
         # x = self.ffwd(x) # (B, T, n_embd/head_size)
         x = self.blocks(x)
+        x = self.ln_f(x)
         logits = self.lm_head(x) # (B, T, vocab_size)
         
         if targets == None:
