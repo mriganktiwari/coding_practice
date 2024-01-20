@@ -56,11 +56,15 @@ class BigramLanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+        self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
     def forward(self, idx, targets=None):
+        B,T = idx.shape
         tok_emb = self.token_embedding_table(idx) # (B,T,n_embd)
-        logits = self.lm_head(tok_emb) # (B,T,C=vocab_size)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device)) #(T,n_embd)
+        x = tok_emb + pos_emb
+        logits = self.lm_head(x) # (B,T,C=vocab_size)
         
         if targets is None:
             loss = None
@@ -76,7 +80,8 @@ class BigramLanguageModel(nn.Module):
         # idx is (B, T) array of indices in the current context
         # job of generate is to extend it to (B,T+1), (B,T+2), (B,T+3) ... and so on; upto max_new_tokens
         for _ in range(max_new_tokens):
-            logits, loss = self(idx)
+            idx_cond = idx[:,-block_size:]
+            logits, loss = self(idx_cond)
             logits = logits[:,-1,:] # (B,C); focussing only on the last time-step channels as it is BIGRAM lm.
             probs = F.softmax(logits, dim=-1) # (B,C)
             idx_next = torch.multinomial(probs, num_samples=1) # (B,1)
@@ -85,13 +90,14 @@ class BigramLanguageModel(nn.Module):
 
 model = BigramLanguageModel()
 m = model.to(device=device)
+print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
 
 # training the model
 optimizer = torch.optim.AdamW(m.parameters(), lr=1e-3)
 
 for iter in range(max_iters):
     # every once in a while, evaluate the loss on train and val sets
-    if iter % eval_interval == 0:
+    if iter % eval_interval == 0 or iter == max_iters:
         losses = estimate_loss()
         print(f"srep {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
@@ -105,4 +111,4 @@ print(loss.item())
 
 # input for starting generation
 context = torch.zeros((1,1), dtype=torch.long, device=device) # B=1,T=1, 0 - is to start with newline character
-print(decode(m.generate(context, max_new_tokens=200)[0].tolist()))
+print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
