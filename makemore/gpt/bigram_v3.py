@@ -10,6 +10,8 @@ learning_rate = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
 n_embd = 32
+n_layers = 6
+n_head = 4
 
 torch.manual_seed(1337)
 
@@ -74,27 +76,43 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size=head_size) for _ in range(num_heads)])
+        self.proj = nn.Linear(head_size * num_heads, n_embd)
 
     def forward(self, x):
-        return torch.cat([h(x) for h in self.heads], dim=-1)
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.proj(out)
+        return out
 
 class FeedForward(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, n_embd),
+            nn.Linear(n_embd, 4 * n_embd),
             nn.ReLU(),
+            nn.Linear(4 * n_embd, n_embd), # act as projection
         )
 
     def forward(self, x):
         return self.net(x)
+
+# class Block(nn.Module):
+#     def __init__(self, n_embd, n_head):
+#         super().__init__()
+#         head_size = n_embd // n_head
+#         self.sa = MultiHeadAttention(num_heads=n_head, head_size=head_size)
+#         self.ffwd = FeedForward(n_embd=n_embd)
+
+#     def forward(self, x):
+#         x = x + self.sa(x)
+#         x = x + self.ffwd(x)
 
 class BigramLanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.sa_heads = MultiHeadAttention(num_heads=4, head_size=n_embd//4)
+        # self.blocks = nn.Sequential(*[Block(n_embd, n_head) for _ in range(n_layers)])
+        self.sa_heads = MultiHeadAttention(4, n_embd//4)
         self.ffwd = FeedForward(n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
@@ -104,7 +122,6 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) #(T,n_embd)
         x = tok_emb + pos_emb
         x = self.sa_heads(x) # (B,T,head_size)
-        x = self.ffwd(x)
         logits = self.lm_head(x) # (B,T,C=vocab_size)
         
         if targets is None:
@@ -140,7 +157,7 @@ for iter in range(max_iters):
     # every once in a while, evaluate the loss on train and val sets
     if iter % eval_interval == 0 or iter == max_iters:
         losses = estimate_loss()
-        print(f"srep {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+        print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
     xb,yb = get_batch("train")
     logits, loss = m(xb,yb)
