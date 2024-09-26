@@ -12,7 +12,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
 n_embd = 384 # head_size = n_embd//n_head = 64
 n_head = 6
-n_layer = 6
+n_layer = 12
 dropout = 0.2
 
 torch.manual_seed(1337)
