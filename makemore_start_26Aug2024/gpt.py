@@ -2,16 +2,16 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-torch.manual_seed(1337)
 # hparams -----------
 batch_size = 32
 block_size = 8
-lr = 1e-3
+lr = 1e-2
 max_iters = 3000
 eval_interval = 300
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
 # ------------
+torch.manual_seed(1337)
 
 text = open("input.txt", 'r').read()
 
@@ -37,6 +37,19 @@ def get_batch(split):
     x,y = x.to(device), y.to(device)
     return x,y
 
+@torch.no_grad()
+def estimate_loss():
+    out = {}
+    model.eval()
+    for split in ['train', 'val']:
+        losses = torch.zeros(eval_iters)
+        for k in range(eval_iters):
+            x,y = get_batch(split)
+            logits, loss = model(x,y)
+            losses[k] = loss.item()
+        out[split] = losses.mean()
+    model.train()
+    return out
 
 class BigramLM(nn.Module):
     
@@ -74,6 +87,10 @@ optimizer = torch.optim.AdamW(params=m.parameters(), lr=lr)
 
 # training the model
 for iter in range(max_iters):
+    if iter%eval_interval == 0:
+        losses = estimate_loss()
+        print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+
     xb, yb = get_batch('train')
     logits, loss = m(xb, yb)
     optimizer.zero_grad(set_to_none=True)
