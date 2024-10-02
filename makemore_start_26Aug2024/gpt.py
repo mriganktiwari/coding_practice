@@ -60,7 +60,13 @@ class BigramLM(nn.Module):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.sa_heads = MultiHeadedSelfAttention(num_heads=num_heads)
+        # self.sa_heads = MultiHeadedSelfAttention(num_heads=num_heads)
+        # self.ffwd = FeedForward(n_embd=n_embd)
+        self.blocks = nn.Sequential(
+            Block(num_heads=num_heads),
+            Block(num_heads=num_heads),
+            Block(num_heads=num_heads),
+        )
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None):
@@ -68,8 +74,11 @@ class BigramLM(nn.Module):
         tok_emb = self.token_embedding_table(idx) # (B,T,n_embd)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,n_embd)
         x = tok_emb + pos_emb # (B,T,n_embd)
-        x = self.sa_heads(x) # (B,T,n_embd)
+        # x = self.sa_heads(x) # (B,T,n_embd)
+        # x = self.ffwd(x) # (B,T,n_embd)
+        x = self.blocks(x) # (B,T,n_embd)
         logits = self.lm_head(x) # (B,T,vocab_size)
+        
         if targets is None:
             loss = None
         else:
@@ -124,7 +133,31 @@ class MultiHeadedSelfAttention(nn.Module):
     def forward(self, x):
         return torch.cat([h(x) for h in self.heads], dim=-1)
 
+class FeedForward(nn.Module):
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, n_embd),
+            nn.ReLU(),
+        )
+    
+    def forward(self, x):
+        return self.net(x)
 
+class Block(nn.Module):
+    # TRANSFORMER BLOCK: communication followed by computation
+    def __init__(self, num_heads):
+        super().__init__()
+        self.sa = MultiHeadedSelfAttention(num_heads=num_heads)
+        self.ffwd = FeedForward(n_embd=n_embd)
+    
+    def forward(self, x):
+        x = self.sa(x)
+        x = self.ffwd(x)
+        return x
+
+
+# training -----------------
 model = BigramLM()
 m = model.to(device)
 optimizer = torch.optim.AdamW(params=m.parameters(), lr=lr)
@@ -140,7 +173,7 @@ for iter in range(max_iters):
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
-print(loss.item())
 
+# generation ---------------
 context = torch.zeros((1,1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
