@@ -11,7 +11,8 @@ eval_interval = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
 n_embd = 32
-head_size = 12
+head_size = 32
+num_heads = 4
 # ------------
 torch.manual_seed(1337)
 
@@ -59,7 +60,7 @@ class BigramLM(nn.Module):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.sa_head = Head(head_size=n_embd)
+        self.sa_heads = MultiHeadedSelfAttention(num_heads=num_heads)
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
     def forward(self, idx, targets=None):
@@ -67,7 +68,7 @@ class BigramLM(nn.Module):
         tok_emb = self.token_embedding_table(idx) # (B,T,n_embd)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,n_embd)
         x = tok_emb + pos_emb # (B,T,n_embd)
-        x = self.sa_head(x) # (B,T,n_embd)
+        x = self.sa_heads(x) # (B,T,n_embd)
         logits = self.lm_head(x) # (B,T,vocab_size)
         if targets is None:
             loss = None
@@ -114,13 +115,23 @@ class Head(nn.Module):
         out = wei @ v # (B,T,T) @ (B,T,head_size) ---> (B,T,head_size)
         return out
 
+class MultiHeadedSelfAttention(nn.Module):
+    def __init__(self, num_heads):
+        super().__init__()
+        self.head_size = head_size // num_heads
+        self.heads = nn.ModuleList([Head(self.head_size) for _ in range(num_heads)])
+    
+    def forward(self, x):
+        return torch.cat([h(x) for h in self.heads], dim=-1)
+
+
 model = BigramLM()
 m = model.to(device)
 optimizer = torch.optim.AdamW(params=m.parameters(), lr=lr)
 
 # training the model
 for iter in range(max_iters):
-    if iter%eval_interval == 0:
+    if iter % eval_interval == 0:
         losses = estimate_loss()
         print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
