@@ -13,6 +13,7 @@ eval_iters = 200
 n_embd = 32
 head_size = 32
 num_heads = 4
+n_layers = 12
 # ------------
 torch.manual_seed(1337)
 
@@ -66,6 +67,7 @@ class BigramLM(nn.Module):
             Block(num_heads=num_heads),
             Block(num_heads=num_heads),
             Block(num_heads=num_heads),
+            nn.LayerNorm(n_embd),
         )
         self.lm_head = nn.Linear(n_embd, vocab_size)
     
@@ -154,10 +156,12 @@ class Block(nn.Module):
         super().__init__()
         self.sa = MultiHeadedSelfAttention(num_heads=num_heads)
         self.ffwd = FeedForward(n_embd=n_embd)
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
     
     def forward(self, x):
-        x = x + self.sa(x)
-        x = x + self.ffwd(x)
+        x = x + self.sa(self.ln1(x))
+        x = x + self.ffwd(self.ln2(x))
         return x
 
 
